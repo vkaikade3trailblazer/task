@@ -1,0 +1,113 @@
+Triger :
+
+trigger createNonconformanceTrg on Case (after insert,after update) {
+    if(trigger.isInsert)
+    {
+        createNonconformance.createRecord(trigger.new);
+    }
+    if(trigger.isUpdate)
+    {
+      createNonconformance.createRecord(trigger.new,trigger.oldMap);  
+    }
+}
+
+public class createNonconformance {
+    
+     Public static void createRecord(List<Case> caseList,Map<ID,Case> oldMap)
+     {
+        Map<Id,Case> caseMap=new MAp<Id,case>();
+         for(case Ca:caseList)
+         {
+             if(oldMap !=null)
+             {
+                case oldCase = oldMap.get(ca.Id);
+                 if(ca.Type != oldCase.Type )
+                 {
+                   if(ca.Type =='Problem' ) 
+                   {
+                     caseMap.put(ca.SQX_NC_Reference__c,ca);  
+                   }
+                 }             
+             }
+             else{
+                if(ca.Type =='Problem')
+            {
+              caseMap.put(ca.SQX_NC_Reference__c,ca);
+            } 
+             }
+         }
+         
+         List<SQX_Nonconformance__c> existingrecordList=[select Id,Priority__c from SQX_Nonconformance__c 
+                                                         where id IN: caseMAp.keyset()];
+         Map<Id,SQX_Nonconformance__c> existingrecordMap=new Map<Id,SQX_Nonconformance__c>();
+         for(SQX_Nonconformance__c nc:existingrecordList)
+         {
+             existingrecordMap.put(nc.Id,nc);
+         }
+         List<SQX_Nonconformance__c> newNonconformanceRecord= new List<SQX_Nonconformance__c>();
+         for(case ca : trigger.new)
+         {
+             if(!existingrecordMap.containsKey(ca.SQX_NC_Reference__c))
+             {
+                 SQX_Nonconformance__c nc=new SQX_Nonconformance__c();
+                 nc.Priority__c = ca.Priority;
+                 nc.Title__c = ca.Subject;
+                 nc.Description__c= ca.Description;
+                 nc.QMS_Reference_Number__c= ca.CaseNumber;
+                 newNonconformanceRecord.add(nc);
+             }
+         }
+         
+         if(!newNonconformanceRecord.isEmpty())
+         {
+             insert newNonconformanceRecord;
+         }
+     }
+}
+
+
+TEST class :
+
+@isTest
+public class TestCreateNonconformanceTrg {
+
+    @isTest
+    static void testCreateNonconformanceOnInsert() {
+        Case testCase = new Case(
+            Subject = 'Test Case',
+            Description = 'Test Description',
+            Type = 'Problem',
+            Status = 'New',
+            Priority = 'High'
+        );
+        
+        insert testCase;
+        
+        List<SQX_Nonconformance__c> nonconformanceRecords = [SELECT Id FROM SQX_Nonconformance__c];
+        System.assertEquals(1, nonconformanceRecords.size());
+    }
+
+    @isTest
+    static void testCreateNonconformanceOnUpdate() {
+        Case testCase = new Case(
+            Subject = 'Test Case',
+            Description = 'Test Description',
+            Type = 'Question',
+            Status = 'New',
+            Priority = 'High'
+        );
+        insert testCase;
+
+        testCase.Type = 'Problem';
+        update testCase;
+
+        List<SQX_Nonconformance__c> nonconformanceRecords = [SELECT Id FROM SQX_Nonconformance__c];
+        System.assertEquals(1, nonconformanceRecords.size());
+
+        // Test if updating the same Case with Type 'Problem' again doesn't create a new Nonconformance
+        update testCase;
+
+        nonconformanceRecords = [SELECT Id FROM SQX_Nonconformance__c];
+        System.assertEquals(1, nonconformanceRecords.size());
+    }
+}
