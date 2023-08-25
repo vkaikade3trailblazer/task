@@ -3,7 +3,7 @@ Triger :
 trigger createNonconformanceTrg on Case (after insert,after update) {
     if(trigger.isInsert)
     {
-        createNonconformance.createRecord(trigger.new);
+        createNonconformance.createRecord(trigger.new,null);
     }
     if(trigger.isUpdate)
     {
@@ -45,7 +45,7 @@ public class createNonconformance {
              existingrecordMap.put(nc.Id,nc);
          }
          List<SQX_Nonconformance__c> newNonconformanceRecord= new List<SQX_Nonconformance__c>();
-         for(case ca : trigger.new)
+         for(case ca : caseList)
          {
              if(!existingrecordMap.containsKey(ca.SQX_NC_Reference__c))
              {
